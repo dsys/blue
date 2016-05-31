@@ -2,6 +2,10 @@
 
 Blueprints for your code
 
+## Usage
+
+    $ blue my-print foobar --baz qux
+
 ## Development
 
 Blue uses [JavaScript Standard Style](https://github.com/feross/standard), [Babel](https://babeljs.io/) for ES6+ support, and [Jest](http://facebook.github.io/jest/) for testing.
