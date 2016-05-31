@@ -128,9 +128,9 @@ try {
 
     const dir = path.dirname(abs)
     mkdirp.sync(dir)
-    fs.writeFileSync(filename, contents)
+    fs.writeFileSync(abs, contents)
 
-    const rel = path.relative(__dirname + '/..', filename)
+    const rel = path.relative(__dirname + '/..', abs)
     console.log(`+ ${rel}`)
   }
 } catch (err) {
