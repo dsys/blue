@@ -1,0 +1,68 @@
+{
+  "name": "blue-cli",
+  "version": "1.0.3",
+  "description": "Blueprints for your code",
+  "license": "BSD-3-Clause",
+  "main": "dist/index.js",
+  "bin": {
+    "blue": "dist/index.js"
+  },
+  "scripts": {
+    "test": "make test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pavlovml/blue.git"
+  },
+  "bugs": {
+    "url": "https://github.com/pavlovml/blue/issues"
+  },
+  "engines": {
+    "node": ">= 5.0.0",
+    "npm": ">= 3.3.0"
+  },
+  "dependencies": {
+    "glob": "^7.0.3",
+    "handlebars": "^4.0.5",
+    "minimist": "^1.2.0",
+    "mkdirp": "^0.5.1"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.2.0",
+    "babel-eslint": "^4.1.5",
+    "babel-jest": "^6.0.1",
+    "babel-plugin-add-module-exports": "^0.1.2",
+    "babel-preset-es2015": "^6.1.18",
+    "babel-preset-stage-0": "^6.3.13",
+    "eslint-plugin-babel": "^2.1.1",
+    "jest-cli": "^0.8.0",
+    "standard": "^5.4.1"
+  },
+  "babel": {
+    "presets": [
+      "es2015",
+      "stage-0"
+    ]
+  },
+  "jest": {
+    "scriptPreprocessor": "<rootDir>/node_modules/babel-jest",
+    "testPathDirs": [
+      "src"
+    ]
+  },
+  "standard": {
+    "parser": "babel-eslint",
+    "ignore": [
+      "dist"
+    ],
+    "global": [
+      "jest",
+      "describe",
+      "it",
+      "pit",
+      "expect",
+      "afterEach",
+      "beforeEach"
+    ]
+  }
+}
