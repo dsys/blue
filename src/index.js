@@ -38,15 +38,15 @@ function printBlueprintHelp (blueprint) {
   }
 }
 
-function findGitRoot () {
+function findGitRoot (cwd) {
   try {
     const stdout = child_process.execSync(
       'git rev-parse --show-toplevel',
-      { stdio: ['pipe', 'pipe', 'ignore'] })
+      { cwd, stdio: ['pipe', 'pipe', 'ignore'] })
     return stdout.toString().trim()
   } catch (err) {
     // ignore err, return cwd
-    return __dirname
+    return cwd
   }
 }
 
@@ -59,7 +59,7 @@ class Blueprint {
 
   load () {
     const filesGlob = path.join(this.directory, '**', '*')
-    const files = glob.sync(filesGlob, { nodir: true })
+    const files = glob.sync(filesGlob, { nodir: true, dot: true })
     for (let file of files) {
       const relFilename = path.relative(this.directory, file)
       const fileContents = fs.readFileSync(file, 'utf-8')
@@ -121,7 +121,7 @@ try {
   const templated = blueprint.template(positionals, argv)
   const filenames = Object.keys(templated).sort()
 
-  const root = findGitRoot()
+  const root = findGitRoot(cwd)
 
   console.log(`applying ${blueprint.name}: ${blueprint.directory}`)
   for (let filename in templated) {
