@@ -80,8 +80,9 @@ class Blueprint {
   }
 }
 
+const cwd = process.cwd()
 const blueprints = {}
-for (let dir = __dirname; dir !== '/'; dir = path.resolve(dir, '..')) {
+for (let dir = cwd; dir !== '/'; dir = path.resolve(dir, '..')) {
   const blueprintsGlob = path.join(dir, 'blueprints', '*') + '/' // only directories
   const blueprintDirs = glob.sync(blueprintsGlob)
   for (let dir of blueprintDirs) {
@@ -91,6 +92,7 @@ for (let dir = __dirname; dir !== '/'; dir = path.resolve(dir, '..')) {
     }
   }
 }
+
 const argv = parseArgs(process.argv)
 
 if (argv._.length === 2) {
@@ -130,7 +132,7 @@ try {
     mkdirp.sync(dir)
     fs.writeFileSync(abs, contents)
 
-    const rel = path.relative(__dirname + '/..', abs)
+    const rel = path.relative(cwd + '/..', abs)
     console.log(`+ ${rel}`)
   }
 } catch (err) {
