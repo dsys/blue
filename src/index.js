@@ -1,89 +1,34 @@
 #! /usr/bin/env node
 
-import Handlebars from 'handlebars'
-import child_process from 'child_process'
+import Blueprint from './Blueprint'
+import IgnoreManager from './IgnoreManager'
 import fs from 'fs'
 import glob from 'glob'
 import mkdirp from 'mkdirp'
 import parseArgs from 'minimist'
 import path from 'path'
+import { findGitRoot } from './utils'
 
-const HANDLEBARS_CONFIG = { strict: true, noEscape: true }
-const MISSING_ARG_REGEX = /^"([\w]+)" not defined in/
-
-function runHandlebars (template, args) {
-  try {
-    const compiled = Handlebars.compile(template, HANDLEBARS_CONFIG)
-    return compiled(args)
-  } catch (err) {
-    const matches = err.message.match(MISSING_ARG_REGEX)
-    if (matches) {
-      const argName = matches[1]
-      throw new Error(`arg '${argName}' not provided`)
-    } else {
-      throw err
-    }
-  }
-}
-
-function printHelp () {
+function printHelp (blueprints) {
   console.log('usage: blue NAME [...OPTS]')
   console.log(`available blueprints: ${Object.keys(blueprints)}`)
 }
 
-function printBlueprintHelp (blueprint) {
-  console.log(`${blueprint.name}: ${blueprint.directory}`)
-  for (let filename in blueprint.files) {
-    console.log(`- ${filename}`)
+function printBlueprintHelp (blueprint, ignoreManager) {
+  console.log(`usage: blue ${blueprint.name} [...OPTS] (at ${blueprint.directory})`)
+  const filenames = blueprint.listFilenames(ignoreManager)
+  for (let f of filenames) {
+    console.log(`- ${f}`)
   }
 }
 
-function findGitRoot (cwd) {
-  try {
-    const stdout = child_process.execSync(
-      'git rev-parse --show-toplevel',
-      { cwd, stdio: ['pipe', 'pipe', 'ignore'] })
-    return stdout.toString().trim()
-  } catch (err) {
-    // ignore err, return cwd
-    return cwd
-  }
-}
-
-class Blueprint {
-  constructor (name, directory) {
-    this.name = name
-    this.directory = directory
-    this.files = {}
-  }
-
-  load () {
-    const filesGlob = path.join(this.directory, '**', '*')
-    const files = glob.sync(filesGlob, { nodir: true, dot: true })
-    for (let file of files) {
-      const relFilename = path.relative(this.directory, file)
-      const fileContents = fs.readFileSync(file, 'utf-8')
-      this.files[relFilename] = fileContents
-    }
-  }
-
-  template (positionals, named) {
-    const view = Object.assign({}, named, positionals)
-    const result = {}
-    for (let relFilename in this.files) {
-      const fileContents = this.files[relFilename]
-      const templName = runHandlebars(relFilename, view)
-      const templContents = runHandlebars(fileContents, view)
-      result[templName] = templContents
-    }
-    return result
-  }
-}
-
-const cwd = process.cwd()
-const blueprints = {}
-for (let dir = cwd; dir !== '/'; dir = path.resolve(dir, '..')) {
-  const blueprintsGlob = path.join(dir, 'blueprints', '*') + '/' // only directories
+function loadBlueprints ({
+  parentDir = process.cwd(),
+  ignoreManager = new IgnoreManager(),
+  blueprints = {},
+  recursive = true
+} = {}) {
+  const blueprintsGlob = `${parentDir}/@(blueprints|.blueprints)/*/` // only directories
   const blueprintDirs = glob.sync(blueprintsGlob)
   for (let dir of blueprintDirs) {
     const blueprintName = path.basename(dir)
@@ -91,39 +36,48 @@ for (let dir = cwd; dir !== '/'; dir = path.resolve(dir, '..')) {
       blueprints[blueprintName] = new Blueprint(blueprintName, dir)
     }
   }
+
+  ignoreManager.addFile(path.join(parentDir, '.gitignore'))
+  ignoreManager.addFile(path.join(parentDir, 'blueprints', '.gitignore'))
+  ignoreManager.addFile(path.join(parentDir, '.blueprints', '.gitignore'))
+
+  if (recursive && parentDir !== '/') {
+    loadBlueprints({
+      parentDir: path.resolve(parentDir, '..'),
+      ignoreManager, blueprints,
+      recursive: true
+    })
+  }
+
+  return { ignoreManager, blueprints }
 }
 
+const { ignoreManager, blueprints } = loadBlueprints()
 const argv = parseArgs(process.argv)
-
 if (argv._.length === 2) {
-  printHelp()
+  printHelp(blueprints)
   process.exit(0)
 }
 
-const blueprintName = argv._[2]
-
-if (!(blueprintName in blueprints)) {
-  console.error(`unknown blueprint '${blueprintName}'`)
-  printHelp()
+const activeBlueprintName = argv._[2]
+const activeBlueprint = blueprints[activeBlueprintName]
+if (activeBlueprint == null) {
+  console.error(`unknown blueprint '${activeBlueprintName}'`)
+  printHelp(blueprints)
   process.exit(1)
-}
-
-const blueprint = blueprints[blueprintName]
-blueprint.load()
-
-if (argv._.length === 3 && Object.keys(argv).length === 1) {
-  printBlueprintHelp(blueprint)
+} else if (argv._.length === 3 && Object.keys(argv).length === 1) {
+  printBlueprintHelp(activeBlueprint, ignoreManager)
   process.exit(0)
 }
 
 try {
+  const compiled = activeBlueprint.compile(ignoreManager)
   const positionals = argv._.slice(3)
-  const templated = blueprint.template(positionals, argv)
-  const filenames = Object.keys(templated).sort()
+  const templated = compiled(positionals, argv)
 
-  const root = findGitRoot(cwd)
+  const root = findGitRoot()
 
-  console.log(`applying ${blueprint.name}: ${blueprint.directory}`)
+  console.log(`applying ${activeBlueprint.name}: ${activeBlueprint.directory}`)
   for (let filename in templated) {
     const abs = path.join(root, filename)
     const contents = templated[filename]
@@ -132,7 +86,7 @@ try {
     mkdirp.sync(dir)
     fs.writeFileSync(abs, contents)
 
-    const rel = path.relative(cwd + '/..', abs)
+    const rel = path.relative(process.cwd(), abs)
     console.log(`+ ${rel}`)
   }
 } catch (err) {

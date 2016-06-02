@@ -23,7 +23,7 @@ install:
 	npm install
 
 lint: | node_modules
-	./node_modules/.bin/standard src/**/*.js
+	./node_modules/.bin/standard
 
 publish: build
 	npm publish
