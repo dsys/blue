@@ -11,7 +11,7 @@ import { findGitRoot } from './utils'
 
 function printHelp (blueprints) {
   console.log('usage: blue NAME [...OPTS]')
-  console.log(`available blueprints: ${Object.keys(blueprints)}`)
+  console.log(`available blueprints: ${Object.keys(blueprints).join(', ')}`)
 }
 
 function printBlueprintHelp (blueprint, ignoreManager) {
