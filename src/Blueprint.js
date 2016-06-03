@@ -1,7 +1,8 @@
+import Handlebars from 'handlebars'
 import fs from 'fs'
 import glob from 'glob'
+import isBinaryFile from 'isbinaryfile'
 import path from 'path'
-import Handlebars from 'handlebars'
 
 const HANDLEBARS_CONFIG = { strict: true, noEscape: true }
 const MISSING_ARG_REGEX = /^"([\w]+)" not defined in/
@@ -39,24 +40,30 @@ export default class Blueprint {
   compile (ignoreManager) {
     const filenames = this.listFilenames(ignoreManager)
 
-    const fileMap = {}
+    const binFileMap = {}
+    const txtFileMap = {}
     for (let relFilename of filenames) {
       const absFilename = path.join(this.directory, relFilename)
-      const fileContents = fs.readFileSync(absFilename, 'utf-8')
-      fileMap[relFilename] = fileContents
+      if (isBinaryFile.sync(absFilename)) {
+        const fileContents = fs.readFileSync(absFilename)
+        binFileMap[relFilename] = fileContents
+      } else {
+        const fileContents = fs.readFileSync(absFilename, 'utf-8')
+        txtFileMap[relFilename] = fileContents
+      }
     }
 
     return (positionals, named) => {
       const view = Object.assign({}, named, positionals)
-      const result = {}
-      for (let relFilename in fileMap) {
-        const fileContents = fileMap[relFilename]
+      const templated = {}
+      for (let relFilename in txtFileMap) {
+        const fileContents = txtFileMap[relFilename]
         const templName = runHandlebars(relFilename, view)
         const templContents = runHandlebars(fileContents, view)
-        result[templName] = templContents
+        templated[templName] = templContents
       }
 
-      return result
+      return Object.assign(templated, binFileMap)
     }
   }
 }
