@@ -1,6 +1,6 @@
 {
   "name": "blue-cli",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Blueprints for your code",
   "license": "BSD-3-Clause",
   "main": "dist/index.js",
